@@ -7,9 +7,11 @@ from matplotlib.widgets import Slider, Button, TextBox
 def waveN(waveNm1, waveNm2, δ, ε, zNm2):
     return -waveNm1 + (2 * waveNm2) - (2 * δ**2 * (ε-np.fabs(zNm2)) * waveNm2)
 
-def verifyε(steps, ε, wave0=1, dwave0=0):
-    # E0 = ε, let hbar^2•a^2/m=1
-    # zX = ε, z at which E0=a|x|
+def verifyε(steps, ε, wave0=0.7005546694136285, dwave0=0):
+    # wave0 is the value given for normalized wave (from Mathematica / Wikipedia)
+    # E0 = ε, let hbar^2•a^2/m = 1
+    # E0 = a|x| when z = ε
+
     steps = 2 ** steps
     δ = ε / steps
     z = np.arange(0, 4, δ)
@@ -25,7 +27,7 @@ def verifyε(steps, ε, wave0=1, dwave0=0):
     valid = 0 if (minVal - waveQ[-1] >= 0 and waveQ[-1] >= 0) else max(waveQ[-1]-minVal, -waveQ[-1])
     return z, waveQ, valid
 
-εinit = 0.80857 # ±0.00001
+εinit = 0.80857 # actual is ±0.00001
 εmin = 0.8085
 εmax = 0.80865
 
@@ -44,13 +46,16 @@ if True:
     line, = plt.plot(oldx, oldy, lw=2, color=color)
     ax.set_xlabel('z')
     ax.set_ylabel('ψ')
-    ax.set_ylim([-0.1, 1.1])
+    plt.title("ψ(x)")
+    ax.set_ylim([-0.05, 0.8])
+    plt.xticks(np.arange(0, 4.1, 1))
+    plt.yticks(np.arange(0, 0.81, 0.2))
 
     # adjust the main plot to make room for the sliders
     plt.subplots_adjust(left=0.3, bottom=0.3)
 
 
-    # Make a horizontal slider to control ε.
+    # Make a horizontal slider to control ε (min gets adjusted right before rendering)
     axε = plt.axes([0.3, 0.175, 0.58, 0.03])
     ε_slider = Slider(
         ax=axε,
@@ -60,11 +65,11 @@ if True:
         valinit=εinit,
     )
 
-    # Make a vertically oriented slider to control δ
+    # Make a vertically oriented slider to control δ (min gets adjusted right before rendering)
     axstep = plt.axes([0.175, 0.3, 0.0225, 0.58])
     step_slider = Slider(
         ax=axstep,
-        label="Steps (for δ)",
+        label="Steps (log2, for δ)",
         valmin=0,
         valmax=stepmax,
         valinit=stepinit,
@@ -85,31 +90,35 @@ if True:
 
 
     ax_step_min = plt.axes([0.05, 0.3, 0.1, 0.04])
-    step_min = TextBox(ax_step_min, 'Step Min', initial=stepmin)
-    l_smin = step_min.ax.get_children()[0]
+    smin_box = TextBox(ax_step_min, 'Step Min', initial=stepmin)
+    
+    # reposition label
+    l_smin = smin_box.ax.get_children()[0]
     l_smin.set_y(1)
     l_smin.set_verticalalignment('bottom')
     l_smin.set_horizontalalignment('left')
 
     ax_step_max = plt.axes([0.05, 0.8, 0.1, 0.04])
-    step_max = TextBox(ax_step_max, 'Step Max', initial=stepmax)
-    l_smax = step_max.ax.get_children()[0]
+    smax_box = TextBox(ax_step_max, 'Step Max', initial=stepmax)
+    
+    # reposition label
+    l_smax = smax_box.ax.get_children()[0]
     l_smax.set_y(1)
     l_smax.set_verticalalignment('bottom')
     l_smax.set_horizontalalignment('left')
 
     ax_ε_min = plt.axes([0.3, 0.1, 0.15, 0.04])
-    ε_min = TextBox(ax_ε_min, 'ε Min', initial=εmin)
+    εmin_box = TextBox(ax_ε_min, 'ε Min', initial=εmin)
 
     ax_ε_max = plt.axes([0.75, 0.1, 0.15, 0.04])
-    ε_max = TextBox(ax_ε_max, 'ε Max', initial=εmax)
+    εmax_box = TextBox(ax_ε_max, 'ε Max', initial=εmax)
 
     def update_slider(text, case):
+        step = "s" == case[0]
         try:
             val = float(text)
-            step = "s" == case[0]
             slider = step_slider if step else ε_slider
-            if "min" in case and val < slider.valmax:
+            if "min" in case and 0 < val < slider.valmax:
                 slider.valmin = val
                 if step:
                     slider.ax.set_ylim(val, None)
@@ -129,12 +138,17 @@ if True:
                     update(val)
             fig.canvas.draw_idle()
         except:
+            textbox = smin_box if step else εmin_box
+            if "min" in case:
+                textbox.set_val(slider.valmin)
+            else:
+                textbox.set_val(slider.valmax)
             pass
 
-    step_min.on_submit(lambda text: update_slider(text, "smin"))
-    step_max.on_submit(lambda text: update_slider(text, "smax"))
-    ε_min.on_submit(lambda text: update_slider(text, "εmin"))
-    ε_max.on_submit(lambda text: update_slider(text, "εmax"))
+    smin_box.on_submit(lambda text: update_slider(text, "smin"))
+    smax_box.on_submit(lambda text: update_slider(text, "smax"))
+    εmin_box.on_submit(lambda text: update_slider(text, "εmin"))
+    εmax_box.on_submit(lambda text: update_slider(text, "εmax"))
     update_slider(εmin, "εmin")
     update_slider(stepmin, "smin")
 
@@ -146,10 +160,10 @@ if True:
     def reset(event):
         step_slider.reset()
         ε_slider.reset()
-        step_min.set_val(stepmin)
-        step_max.set_val(stepmax)
-        ε_min.set_val(εmin)
-        ε_max.set_val(εmax)
+        smin_box.set_val(stepmin)
+        smax_box.set_val(stepmax)
+        εmin_box.set_val(εmin)
+        εmax_box.set_val(εmax)
         update_slider(εmin, "εmin")
         update_slider(stepmin, "smin")
         update_slider(εmax, "εmax")
