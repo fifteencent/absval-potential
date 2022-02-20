@@ -7,8 +7,27 @@ from matplotlib.widgets import Slider, Button, TextBox
 def waveN(waveNm1, waveNm2, δ, ε, zNm2):
     return -waveNm1 + (2 * waveNm2) - (2 * δ**2 * (ε-np.fabs(zNm2)) * waveNm2)
 
-def verifyε(steps, ε, wave0=0.7005546694136285, dwave0=0):
-    # wave0 is the value given for normalized wave (from Mathematica / Wikipedia)
+def verifyε(steps, ε, wave0=0.7005546694136285, complete=True):
+    """Plot the wavefunction numerically using ε and steps.
+
+    Arguments:
+    steps       number of steps, log 2, taken from z=0 to z=ε (i.e. where E0=a|x|).
+                    i.e. δ = ε * steps^(-2)
+    ε           epsilon, the dimensionless parameter related to energy.
+    wave0       ψ(0), determining the "amplitude" of the wave.
+                    the given value normalizes the solution corresponding to the correct ε,
+                    calculated with the help of Mathematica and Wikipedia
+    complete    True: returns all values of ψ are desired regardless of correctness.
+                False: Truncates ψ when error is detected. Calculates "valid" with remaining number of steps.
+                    Plotting with complete=False is not as clear, but saves a lot of time.
+    
+    Return:
+    z       An array of the z-values at which the wavefunction was evaluated. 
+                A regular partition of 0 to 4 with step size δ (given above)
+    waveQ   An array of the values of the wavefunction corresponding to the given ε,
+                calculated numerically with the given δ.
+    valid   A positive score denoting how "correct" ε is (given δ), with 0 being "correct"
+    """
     # E0 = ε, let hbar^2•a^2/m = 1
     # E0 = a|x| when z = ε
 
@@ -18,13 +37,17 @@ def verifyε(steps, ε, wave0=0.7005546694136285, dwave0=0):
     wave1 = wave0 - δ**2 * ε * wave0
     waveQ = np.zeros((len(z)))
     waveQ[0], waveQ[1] = wave0, wave1
+    valid = 0
     for i in range(2, len(z)):
         waveQ[i] = waveN(*waveQ[i-2:i], δ, ε, z[i-2]) 
+        valid = 0 if (waveQ[i-2] - waveQ[i] >= 0 and waveQ[i] >= 0) \
+                else (1 if not complete else max(waveQ[i]-np.amin(waveQ), -waveQ[i]))
+        if not complete and valid != 0:
+            valid = len(z)- i
+            break
 
     # calculate the "error" in the wave function 
     # i.e. how negative the tail is, or how much the tail is greater than its minimum value
-    minVal = np.amin(waveQ)
-    valid = 0 if (minVal - waveQ[-1] >= 0 and waveQ[-1] >= 0) else max(waveQ[-1]-minVal, -waveQ[-1])
     return z, waveQ, valid
 
 εinit = 0.80857 # actual is ±0.00001
@@ -35,10 +58,22 @@ stepinit = 13
 stepmin = 12
 stepmax = 15
 
+def getErrors(filename, εtol, steptol, **argc):
+    try: 
+        errors = np.loadtxt(filename)
+    except:
+        errors = np.zeros((len(εtol), len(steptol)))#I was actually not dumb, wow what a miracle.
+        for nε, ε in enumerate(εtol):
+            print(nε, "/", len(εtol))
+            for nstep, step in enumerate(steptol):
+                err = verifyε(step, ε, **argc)[-1]
+                errors[nε,nstep] = err
+        np.savetxt(filename, errors)
+    return errors
 
 # Plots wavefunction for corresponding ε and δ values (controlled with sliders).
 # Red and green correspond to invalid and valid solutions respectively.
-if True:
+if False:
     # Create the figure and the line that we will manipulate
     fig, ax = plt.subplots()
     oldx, oldy, valid = verifyε(stepinit, εinit)
@@ -179,21 +214,13 @@ if False:
     tries = 10
     filename = str(tries)+str(tries)+".txt"
     εtol = np.linspace(εmin,εmax,tries)
-    steptol = np.linspace(12,15,tries)
-    try: 
-        errors = np.loadtxt(filename)
-    except:
-        errors = np.zeros((len(εtol), len(steptol)))#I was actually not dumb, wow what a miracle.
-        for nε, ε in enumerate(εtol):
-            print(nε, "/", len(εtol))
-            for nstep, step in enumerate(steptol):
-                err = verifyε(step, ε)[-1]
-                errors[nε,nstep] = err
-        np.savetxt(filename, errors)
+    steptol = np.linspace(stepmin,stepmax,tries)
+    errors = getErrors(filename, εtol, steptol)
 
     extent =[steptol[0],steptol[-1],εtol[0],εtol[-1]]
     fig, ax = plt.subplots(figsize=(8,8))
-    im = ax.imshow(errors,origin='lower',interpolation='none', extent=extent, aspect="auto")
+    im = ax.imshow(errors, \
+        origin='lower',interpolation='none', extent=extent, aspect="auto")
     fig.colorbar(im,shrink=0.8)
     ax.set_xlabel("Number of steps (log 2)")
     ax.set_ylabel("ε value")
@@ -202,34 +229,29 @@ if False:
     
 # Heatmap for the "error" in the wave function (calculation in line 22 above)
 # with respect to a larger range of values of ε and δ (than above)
-if False:
+if True:
     tries = 100
     filename = "big"+str(tries)+str(tries)+".txt"
     εtol = np.linspace(0.5,0.9,tries)
     steptol = np.linspace(2,15,tries)
-    try: 
-        errors = np.loadtxt(filename)
-    except:
-        errors = np.zeros((len(εtol), len(steptol)))#I was actually not dumb, wow what a miracle.
-        for nε, ε in enumerate(εtol):
-            print(nε, "/", len(εtol))
-            for nstep, step in enumerate(steptol):
-                err = verifyε(step, ε)[-1]
-                errors[nε,nstep] = err
-        np.savetxt(filename, errors)
+    errors = getErrors(filename, εtol, steptol)
 
     extent =[steptol[0],steptol[-1],εtol[0],εtol[-1]]
     fig, ax = plt.subplots(figsize=(8,8))
-    im = ax.imshow(errors,origin='lower',interpolation='none', extent=extent, aspect="auto", cmap=plt.get_cmap("plasma"))
+
+    # use norm=colors.PowerNorm(0.4) if complete=False
+    im = ax.imshow(errors, \
+        origin='lower',interpolation='none', extent=extent, aspect="auto", cmap=plt.get_cmap("plasma"), norm=colors.PowerNorm(0.4))
     fig.colorbar(im,shrink=0.8)
     ax.set_xlabel("Number of steps (log 2)")
     ax.set_ylabel("ε value")
     
-    rect=mpatches.Rectangle((12, εmin),3,εmax-εmin, 
-                        fill=False,
-                        color="white",
-                       linewidth=1)
-                       #facecolor="red")
-    plt.gca().add_patch(rect)
+    # to show region in more zoomed in plot (2nd if statement)
+    # rect=mpatches.Rectangle((12, εmin),3,εmax-εmin, 
+    #                     fill=False,
+    #                     color="white",
+    #                    linewidth=1)
+    #                    #facecolor="red")
+    # plt.gca().add_patch(rect)
 
     plt.show()
