@@ -73,7 +73,7 @@ def getErrors(filename, εtol, steptol, **argc):
 
 # Plots wavefunction for corresponding ε and δ values (controlled with sliders).
 # Red and green correspond to invalid and valid solutions respectively.
-if False:
+if True:
     # Create the figure and the line that we will manipulate
     fig, ax = plt.subplots()
     oldx, oldy, valid = verifyε(stepinit, εinit)
@@ -91,23 +91,23 @@ if False:
 
 
     # Make a horizontal slider to control ε (min gets adjusted right before rendering)
-    axε = plt.axes([0.3, 0.175, 0.58, 0.03])
-    ε_slider = Slider(
-        ax=axε,
-        label='ε',
-        valmin=0,
-        valmax=εmax,
-        valinit=εinit,
-    )
-
-    # Make a vertically oriented slider to control δ (min gets adjusted right before rendering)
-    axstep = plt.axes([0.175, 0.3, 0.0225, 0.58])
+    axstep = plt.axes([0.3, 0.175, 0.58, 0.03])
     step_slider = Slider(
         ax=axstep,
         label="Steps (log2, for δ)",
         valmin=0,
         valmax=stepmax,
         valinit=stepinit,
+    )
+
+    # Make a vertically oriented slider to control δ (min gets adjusted right before rendering)
+    axε = plt.axes([0.175, 0.3, 0.0225, 0.58])
+    ε_slider = Slider(
+        ax=axε,
+        label='ε',
+        valmin=0,
+        valmax=εmax,
+        valinit=εinit,
         orientation="vertical"
     )
 
@@ -124,29 +124,29 @@ if False:
     ε_slider.on_changed(update)
 
 
-    ax_step_min = plt.axes([0.05, 0.3, 0.1, 0.04])
-    smin_box = TextBox(ax_step_min, 'Step Min', initial=stepmin)
-    
-    # reposition label
-    l_smin = smin_box.ax.get_children()[0]
-    l_smin.set_y(1)
-    l_smin.set_verticalalignment('bottom')
-    l_smin.set_horizontalalignment('left')
-
-    ax_step_max = plt.axes([0.05, 0.8, 0.1, 0.04])
-    smax_box = TextBox(ax_step_max, 'Step Max', initial=stepmax)
-    
-    # reposition label
-    l_smax = smax_box.ax.get_children()[0]
-    l_smax.set_y(1)
-    l_smax.set_verticalalignment('bottom')
-    l_smax.set_horizontalalignment('left')
-
-    ax_ε_min = plt.axes([0.3, 0.1, 0.15, 0.04])
+    ax_ε_min = plt.axes([0.05, 0.3, 0.1, 0.04])
     εmin_box = TextBox(ax_ε_min, 'ε Min', initial=εmin)
+    
+    # reposition label
+    l_εmin = εmin_box.ax.get_children()[0]
+    l_εmin.set_y(1)
+    l_εmin.set_verticalalignment('bottom')
+    l_εmin.set_horizontalalignment('left')
 
-    ax_ε_max = plt.axes([0.75, 0.1, 0.15, 0.04])
+    ax_ε_max = plt.axes([0.05, 0.8, 0.1, 0.04])
     εmax_box = TextBox(ax_ε_max, 'ε Max', initial=εmax)
+    
+    # reposition label
+    l_εmax = εmax_box.ax.get_children()[0]
+    l_εmax.set_y(1)
+    l_εmax.set_verticalalignment('bottom')
+    l_εmax.set_horizontalalignment('left')
+
+    ax_step_min = plt.axes([0.3, 0.1, 0.15, 0.04])
+    smin_box = TextBox(ax_step_min, 'Step Min', initial=stepmin)
+
+    ax_step_max = plt.axes([0.75, 0.1, 0.15, 0.04])
+    smax_box = TextBox(ax_step_max, 'Step Max', initial=stepmax)
 
     def update_slider(text, case):
         step = "s" == case[0]
@@ -156,18 +156,18 @@ if False:
             if "min" in case and 0 < val < slider.valmax:
                 slider.valmin = val
                 if step:
-                    slider.ax.set_ylim(val, None)
-                else:
                     slider.ax.set_xlim(val, None)
+                else:
+                    slider.ax.set_ylim(val, None)
                 if val > slider.val:
                     slider.val=val
                     update(val)
             elif "max" in case and val > slider.valmin:
                 slider.valmax = val
                 if step:
-                    slider.ax.set_ylim(None, val)
-                else:
                     slider.ax.set_xlim(None, val)
+                else:
+                    slider.ax.set_ylim(None, val)
                 if val < slider.val:
                     slider.val=val
                     update(val)
@@ -229,9 +229,10 @@ if False:
     
 # Heatmap for the "error" in the wave function (calculation in line 22 above)
 # with respect to a larger range of values of ε and δ (than above)
-if True:
+if False:
     tries = 100
-    filename = "big"+str(tries)+str(tries)+".txt"
+    complete=True
+    filename = "big"+("" if complete else "n")+str(tries)+str(tries)+".txt"
     εtol = np.linspace(0.5,0.9,tries)
     steptol = np.linspace(2,15,tries)
     errors = getErrors(filename, εtol, steptol)
@@ -239,19 +240,18 @@ if True:
     extent =[steptol[0],steptol[-1],εtol[0],εtol[-1]]
     fig, ax = plt.subplots(figsize=(8,8))
 
-    # use norm=colors.PowerNorm(0.4) if complete=False
     im = ax.imshow(errors, \
-        origin='lower',interpolation='none', extent=extent, aspect="auto", cmap=plt.get_cmap("plasma"), norm=colors.PowerNorm(0.4))
+        origin='lower',interpolation='none', extent=extent, aspect="auto", cmap=plt.get_cmap("plasma"), norm=colors.PowerNorm(0.6))
     fig.colorbar(im,shrink=0.8)
     ax.set_xlabel("Number of steps (log 2)")
     ax.set_ylabel("ε value")
     
     # to show region in more zoomed in plot (2nd if statement)
-    # rect=mpatches.Rectangle((12, εmin),3,εmax-εmin, 
-    #                     fill=False,
-    #                     color="white",
-    #                    linewidth=1)
-    #                    #facecolor="red")
-    # plt.gca().add_patch(rect)
+    rect=mpatches.Rectangle((12, εmin),3,εmax-εmin, 
+                        fill=False,
+                        color="white",
+                       linewidth=1)
+                       #facecolor="red")
+    plt.gca().add_patch(rect)
 
     plt.show()
