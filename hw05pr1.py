@@ -43,14 +43,14 @@ def verifyε(steps, ε, wave0=0.7005546694136285, complete=True):
         valid = 0 if (waveQ[i-2] - waveQ[i] >= 0 and waveQ[i] >= 0) \
                 else (1 if not complete else max(waveQ[i]-np.amin(waveQ), -waveQ[i]))
         if not complete and valid != 0:
-            valid = len(z)- i
+            valid = (len(z)- i) / len(z)
             break
 
     # calculate the "error" in the wave function 
     # i.e. how negative the tail is, or how much the tail is greater than its minimum value
     return z, waveQ, valid
 
-εinit = 0.80857 # actual is ±0.00001
+εinit = 0.80859 # actual is ±0.00003
 εmin = 0.8085
 εmax = 0.80865
 
@@ -73,7 +73,7 @@ def getErrors(filename, εtol, steptol, **argc):
 
 # Plots wavefunction for corresponding ε and δ values (controlled with sliders).
 # Red and green correspond to invalid and valid solutions respectively.
-if True:
+if False:
     # Create the figure and the line that we will manipulate
     fig, ax = plt.subplots()
     oldx, oldy, valid = verifyε(stepinit, εinit)
@@ -229,19 +229,19 @@ if False:
     
 # Heatmap for the "error" in the wave function (calculation in line 22 above)
 # with respect to a larger range of values of ε and δ (than above)
-if False:
+if True:
     tries = 100
-    complete=True
+    complete=False
     filename = "big"+("" if complete else "n")+str(tries)+str(tries)+".txt"
     εtol = np.linspace(0.5,0.9,tries)
     steptol = np.linspace(2,15,tries)
-    errors = getErrors(filename, εtol, steptol)
+    errors = getErrors(filename, εtol, steptol, complete=complete)
 
     extent =[steptol[0],steptol[-1],εtol[0],εtol[-1]]
     fig, ax = plt.subplots(figsize=(8,8))
 
     im = ax.imshow(errors, \
-        origin='lower',interpolation='none', extent=extent, aspect="auto", cmap=plt.get_cmap("plasma"), norm=colors.PowerNorm(0.6))
+        origin='lower',interpolation='none', extent=extent, aspect="auto", cmap=plt.get_cmap("plasma"), norm=colors.PowerNorm(2.5))
     fig.colorbar(im,shrink=0.8)
     ax.set_xlabel("Number of steps (log 2)")
     ax.set_ylabel("ε value")
